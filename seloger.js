@@ -1,5 +1,9 @@
 const puppeteer = require("puppeteer");
 const fs = require("fs");
+
+let wait = ms => {
+  return new Promise(resolve => setTimeout(() => resolve(), ms));
+};
 let scrape = async () => {
   try {
     const browser = await puppeteer.launch({ headless: false });
@@ -7,73 +11,118 @@ let scrape = async () => {
     page.on("console", msg => console.log("PAGE LOG:", msg.text()));
     const codePostal = "75";
     const price = 200000;
-    const finalResult = [];
+    const allPages = [];
     for (let i = 1; i < 2; i++) {
       const urlSeloger = `https://www.seloger.com/list.htm?tri=initial&idtypebien=2,1&pxmax=${price}&idtt=2,5&naturebien=1,2,4&cp=${codePostal}&LISTING-LISTpg=${i}`;
       console.log(
         `crawl info for location: ${codePostal}, price: ${price}, page ${i}`
       );
-      await page.goto(urlSeloger);
-      await page.waitFor(1000);
-      const result = await page.evaluate(() => {
+      await page.goto(urlSeloger, { waitUntil: "load" });
+
+      // Get the height of the rendered page
+      const bodyHandle = await page.$("body");
+      const { height } = await bodyHandle.boundingBox();
+      await bodyHandle.dispose();
+
+      // Scroll one viewport at a time, pausing to let content load
+      const viewportHeight = page.viewport().height;
+      let viewportIncr = 0;
+      while (viewportIncr + viewportHeight < height) {
+        await page.evaluate(_viewportHeight => {
+          window.scrollBy(0, _viewportHeight);
+        }, viewportHeight);
+        await wait(100);
+        viewportIncr = viewportIncr + viewportHeight;
+      }
+
+      // Scroll back to top
+      await page.evaluate(_ => {
+        window.scrollTo(0, 0);
+      });
+      
+      // await page.waitFor(1000);
+      const onePage = await page.evaluate(() => {
         let resultData = [];
-        let elements = document.querySelectorAll(".c-pa-info");
-        for (const element of elements) {
-          // TODO: lay toan bo anh trong phan (".c-pa-pic")
+        let annonceElement = document.querySelectorAll(".c-pa-list");
+        for (const annonce of annonceElement) {
           let data = {};
-          // for each element, travel their attribute: Name, price, description, location
-          for (let i = 0; i < element.children.length; i++) {
-            const node = element.children[i];
-            if (node) {
-              if (i === 0) {
-                data["href"] = node.getAttribute("href");
-                // 'Appartement en viager
-                data["typeAppartement"] = node.innerText;
-              } else if (i === 1) {
-                // '3 p 1 ch 85 m²'
-                data["description"] = node.innerText;
-              } else if (i === 2) {
-                // 'Bouquet 145 500 € '
-                data["price"] = node.innerText;
-              } else if (i === 3) {
-                // 'ou 605€/mois*'
-                data["pricePerMonth"] = node.innerText;
-              } else if (i === 4) {
-                //  'Paris 20ème'
-                data["location"] = node.innerText;
-              } else if (i === 6) {
-                // Agence: urlSeloger, urlSiteWeb, name, logo
-                let agence = {};
-
-                // console.log('children', j , node.children[0].innerHTML);
-                if (node.children[0] && node.children[0].children) {
-                  console.log("children", node.children[0].children[0]);
-                  let logoUrl =
-                    node.children[0].children[0].attributes["data-lazy"].value;
-                  let agenceName =
-                    node.children[0].children[0].attributes["alt"].value;
-
-                  agence = { logoUrl, agenceName };
-                }
-
-                data["agence"] = agence;
-              } else if (i === 7) {
-                // Contact: mail, tel
-                let contact = {};
-                data["contact"] = contact;
-              }
-              // data[i] = node.innerText;
+          let classVisual = annonce.querySelectorAll(".c-pa-visual");
+          for (const element of classVisual) {
+            let images = [];
+            let imagesElement = element.getElementsByTagName("img");
+            console.log(
+              "image leng----------------------",
+              imagesElement.length
+            );
+            for (const image of imagesElement) {
+              let srcTag = image.getAttribute("src");
+              images.push(srcTag);
             }
+            data["images"] = images;
           }
-          resultData.push(data);
+          let classInfo = annonce.querySelectorAll(".c-pa-info");
+          for (const element of classInfo) {
+            // TODO: lay toan bo anh trong phan (".c-pa-pic")
+            // for each element, travel their attribute: Name, price, description, location
+            for (let i = 0; i < element.children.length; i++) {
+              const node = element.children[i];
+              if (node) {
+                if (i === 0) {
+                  data["href"] = node.getAttribute("href");
+                  // 'Appartement en viager
+                  data["typeAppartement"] = node.innerText;
+                } else if (i === 1) {
+                  // '3 p 1 ch 85 m²'
+                  data["description"] = node.innerText;
+                } else if (i === 2) {
+                  // 'Bouquet 145 500 € '
+                  data["price"] = node.innerText;
+                } else if (i === 3) {
+                  // 'ou 605€/mois*'
+                  data["pricePerMonth"] = node.innerText;
+                } else if (i === 4) {
+                  //  'Paris 20ème'
+                  data["location"] = node.innerText;
+                } else if (i === 6) {
+                  // Agence: urlSeloger, urlSiteWeb, name, logo
+                  let agence = {};
+
+                  // console.log('children', j , node.children[0].innerHTML);
+                  if (
+                    node.children[0] &&
+                    node.children[0].children &&
+                    node.children[0].children[0] &&
+                    node.children[0].children[0].attributes
+                  ) {
+                    let logoUrl =
+                      node.children[0].children[0].attributes["data-lazy"]
+                        .value;
+                    let agenceName =
+                      node.children[0].children[0].attributes["alt"].value;
+                    agence = { logoUrl, agenceName };
+                  }
+
+                  data["agence"] = agence;
+                } else if (i === 7) {
+                  // Contact: mail, tel
+                  let contact = {};
+                  data["contact"] = contact;
+                }
+                // data[i] = node.innerText;
+              }
+            }
+            resultData.push(data);
+          }
         }
+
         return resultData;
       });
-      finalResult.push(...result);
+
+      allPages.push(...onePage);
     }
 
     browser.close();
-    return finalResult;
+    return allPages;
   } catch (error) {
     console.log(error);
   }
@@ -81,7 +130,7 @@ let scrape = async () => {
 
 scrape()
   .then(value => {
-    console.log(value);
+    // console.log(value);
     let result = JSON.stringify(value);
     /* fs.writeFile("result.json", result, function(err) {
       if (err) {
