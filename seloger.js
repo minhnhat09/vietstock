@@ -12,6 +12,21 @@ let scrape = async () => {
     const codePostal = "75";
     const price = 200000;
     const allPages = [];
+    const urlSeloger = `https://www.seloger.com/list.htm?tri=initial&idtypebien=2,1&pxmax=${price}&idtt=2,5&naturebien=1,2,4&cp=${codePostal}`;
+    await page.goto(urlSeloger);
+    // all post for the criteria (paris, 200 000)
+    const postsNumber = await page.evaluate(() => {
+      let title = document.querySelector(".title_nbresult");
+      if (title) {
+        return title.innerText;
+      }
+    });
+    console.log(postsNumber);
+    // Convert string (1000 annonces) to number
+    let numRegex = /\d+/g;
+    let numberFormat = Number(postsNumber.match(numRegex).join(""));
+    const postPerPage = 20;
+    const numberOfPages = Math.ceil(numberFormat / postPerPage);
     for (let i = 1; i < 2; i++) {
       const urlSeloger = `https://www.seloger.com/list.htm?tri=initial&idtypebien=2,1&pxmax=${price}&idtt=2,5&naturebien=1,2,4&cp=${codePostal}&LISTING-LISTpg=${i}`;
       console.log(
@@ -31,7 +46,7 @@ let scrape = async () => {
         await page.evaluate(_viewportHeight => {
           window.scrollBy(0, _viewportHeight);
         }, viewportHeight);
-        await wait(100);
+        await wait(500);
         viewportIncr = viewportIncr + viewportHeight;
       }
 
@@ -39,21 +54,18 @@ let scrape = async () => {
       await page.evaluate(_ => {
         window.scrollTo(0, 0);
       });
-      
+
       // await page.waitFor(1000);
       const onePage = await page.evaluate(() => {
         let resultData = [];
         let annonceElement = document.querySelectorAll(".c-pa-list");
         for (const annonce of annonceElement) {
           let data = {};
+          data["idAnnoucement"] = annonce.getAttribute("id");
           let classVisual = annonce.querySelectorAll(".c-pa-visual");
           for (const element of classVisual) {
             let images = [];
             let imagesElement = element.getElementsByTagName("img");
-            console.log(
-              "image leng----------------------",
-              imagesElement.length
-            );
             for (const image of imagesElement) {
               let srcTag = image.getAttribute("src");
               images.push(srcTag);
@@ -92,7 +104,9 @@ let scrape = async () => {
                     node.children[0] &&
                     node.children[0].children &&
                     node.children[0].children[0] &&
-                    node.children[0].children[0].attributes
+                    node.children[0].children[0].attributes &&
+                    node.children[0].children[0].attributes["data-lazy"] &&
+                    node.children[0].children[0].attributes["alt"]
                   ) {
                     let logoUrl =
                       node.children[0].children[0].attributes["data-lazy"]
@@ -124,22 +138,22 @@ let scrape = async () => {
     browser.close();
     return allPages;
   } catch (error) {
-    console.log(error);
+    console.log("error all pages function", error);
   }
 };
 
 scrape()
   .then(value => {
-    // console.log(value);
+    console.log(value.length);
     let result = JSON.stringify(value);
-    /* fs.writeFile("result.json", result, function(err) {
+    fs.writeFile("result.json", result, function(err) {
       if (err) {
         return console.log(err);
       }
 
       console.log("The file was saved!");
-    }); */
+    });
   })
   .catch(e => {
-    console.log(e);
+    console.log("error scrape function", e);
   });
