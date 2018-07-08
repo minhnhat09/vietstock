@@ -21,7 +21,7 @@ let scrape = async () => {
         return title.innerText;
       }
     });
-    console.log(postsNumber);
+    
     // Convert string (1000 annonces) to number
     let numRegex = /\d+/g;
     let numberFormat = Number(postsNumber.match(numRegex).join(""));
@@ -46,7 +46,7 @@ let scrape = async () => {
         await page.evaluate(_viewportHeight => {
           window.scrollBy(0, _viewportHeight);
         }, viewportHeight);
-        await wait(500);
+        await wait(50);
         viewportIncr = viewportIncr + viewportHeight;
       }
 
@@ -142,7 +142,7 @@ let scrape = async () => {
   }
 };
 
-scrape()
+/* scrape()
   .then(value => {
     console.log(value.length);
     let result = JSON.stringify(value);
@@ -156,4 +156,15 @@ scrape()
   })
   .catch(e => {
     console.log("error scrape function", e);
-  });
+  }); */
+
+let main = async () => {
+  try {
+    let value = await scrape();
+    console.log(value.length);
+  } catch (error) {
+    console.log("error in main", error);
+  }
+};
+
+main();
