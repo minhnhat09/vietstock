@@ -5,6 +5,7 @@ const fs = require("fs");
 const path = require("path");
 const util = require('util');
 fs.readFile = util.promisify(fs.readFile);
+fs.writeFile = util.promisify(fs.writeFile);
 const url =
   "http://finance.vietstock.vn/Controls/Report/Data/GetReport.ashx?rptType=CDKT&scode=VNM&bizType=1&rptUnit=1000000&rptTermTypeID=1&page=1";
 let extractJson = async (option) => {
@@ -62,10 +63,7 @@ let extractJson = async (option) => {
     // console.log(table);
     let fileNameExport = path.join(__dirname, `${option}.json`);
 
-    let result = await fs.writeFile(
-      fileNameExport,
-      JSON.stringify(table),
-      (encoding = "utf8"));
+    let result = await fs.writeFile(fileNameExport, JSON.stringify(table), encoding = "utf8");
     console.log("end of write file");
   } catch (error) {
     console.error(error);
