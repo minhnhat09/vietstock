@@ -1,13 +1,3 @@
-const puppeteer = require('puppeteer');
-// BR_tBody_colName Normal Padding1
-/**
- * BR_tBody_colName NormalB Padding1
- * BR_tBody_colName Normal Padding1
- * 
- * BR_tBody_colValue_mVND NormalB
- * 2208 BR_tBody_rowName
- * <a class="Menu_BCTC_Link" id="KQKD">Kết quả kinh doanh</a>
- */
 let scrape = async () => {
   const browser = await puppeteer.launch({ headless: false });
   const page = await browser.newPage();
