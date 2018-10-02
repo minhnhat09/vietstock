@@ -3,16 +3,17 @@ const $ = require("jquery");
 const jsdom = require("jsdom");
 const fs = require("fs");
 const path = require("path");
-
-
+const util = require('util');
+fs.readFile = util.promisify(fs.readFile);
 const url =
   "http://finance.vietstock.vn/Controls/Report/Data/GetReport.ashx?rptType=CDKT&scode=VNM&bizType=1&rptUnit=1000000&rptTermTypeID=1&page=1";
-let extractJson = async () => {
+let extractJson = async (option) => {
   // let response = await axios.get(url);
-  let fileName = path.join(__dirname, "vietStockResponse.html");
-  console.log(fileName);
-  fs.readFile(fileName, function (err, data) {
-    if (err) throw err;
+  try {
+    let fileName = path.join(__dirname, "sample", `${option}.html`);
+    console.log("start read file", fileName);
+    let data = await fs.readFile(fileName);
+    console.log("read file ok");
     const html = data.toString("utf8");
     // const html = response.data;
     const { JSDOM } = jsdom;
@@ -61,17 +62,16 @@ let extractJson = async () => {
     table[header2] = col2;
     table[header3] = col3;
     // console.log(table);
-    let fileNameExport = path.join(__dirname, "result.json");
-    fs.writeFile(
+    let fileNameExport = path.join(__dirname, `${option}.json`);
+
+    let result = await fs.writeFile(
       fileNameExport,
       JSON.stringify(table),
-      (encoding = "utf8"),
-      function (err) {
-        if (err) throw err;
-        console.log("It's saved!");
-      }
-    );
-  });
+      (encoding = "utf8"));
+    console.log("end of write file");
+  } catch (error) {
+    console.error(error);
+  }
 };
 module.exports = {
   extractJson
