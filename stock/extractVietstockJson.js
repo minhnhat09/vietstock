@@ -13,7 +13,6 @@ let extractJson = async (option) => {
     let fileName = path.join(__dirname, "sample", `${option}.html`);
     console.log("start read file", fileName);
     let data = await fs.readFile(fileName);
-    console.log("read file ok");
     const html = data.toString("utf8");
     // const html = response.data;
     const { JSDOM } = jsdom;
@@ -33,7 +32,6 @@ let extractJson = async (option) => {
       headers.push(e);
     }
     let header0 = headers[0];
-    console.log(header0);
     let header1 = headers[1];
     let header2 = headers[2];
     let header3 = headers[3];
